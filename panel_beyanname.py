@@ -556,13 +556,15 @@ class BeyannamePanel(QWidget):
         self.cmb_filter.setCurrentIndex(max(0, idx))
         self.cmb_filter.blockSignals(False)
 
-        # Tür filtre combo'sunu doldur
+        # Tür filtre combo'sunu doldur — sabit + özel tüm türler
         self.cmb_tur.blockSignals(True)
         prev_tur = self.cmb_tur.currentData()
         self.cmb_tur.clear()
         self.cmb_tur.addItem("— Tüm Türler —", None)
-        turler = sorted({b['tur'] for b in self._data})
-        for t in turler:
+        from db import AYLIK_TURLER, UC_AYLIK_TURLER, YILLIK_TURLER
+        sabit = list(AYLIK_TURLER) + list(UC_AYLIK_TURLER) + list(YILLIK_TURLER)
+        ozel  = [r['ad'] for r in db.get_ozel_turler()]
+        for t in sabit + ozel:
             self.cmb_tur.addItem(t, t)
         idx_tur = self.cmb_tur.findData(prev_tur)
         self.cmb_tur.setCurrentIndex(max(0, idx_tur))

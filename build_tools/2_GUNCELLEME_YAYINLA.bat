@@ -74,7 +74,7 @@ if not exist "%INSTALLER%" (
     echo.
     set /p BUILD_ONAY=  Şimdi build yapılsın mı? (E/H): 
     if /i "%BUILD_ONAY%"=="E" (
-        call "%ROOT%\build_tools\BUILD_KURULUM.bat"
+        call "%ROOT%\build_tools\1_EXE_OLUSTUR.bat"
         if errorlevel 1 goto :hata
     ) else (
         goto :hata
