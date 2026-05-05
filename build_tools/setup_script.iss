@@ -125,9 +125,7 @@ begin
   if CurStep = ssPostInstall then
   begin
     Username  := Trim(KullaniciAdiPage.Values[0]);
-    ConfigDir := ExpandConstant('{userappdata}\SMMM Takip');
-    if not ForceDirectories(ConfigDir) then
-      ConfigDir := ExpandConstant('{userappdata}');
+    ConfigDir := ExpandConstant('{app}');
     ConfigFile := ConfigDir + '\config.ini';
     SaveStringToFile(ConfigFile,
       '[Uygulama]' + #13#10 +

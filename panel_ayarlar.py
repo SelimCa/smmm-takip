@@ -14,6 +14,7 @@ from db import db
 from zirve_import import zirve_mukellef_listesi, zirve_iceri_aktar
 
 
+
 class AyarlarPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -21,10 +21,16 @@ from datetime import date
 from version import GITHUB_REPO
 
 # ─── Dosya yolları ────────────────────────────────────────────
+import sys as _sys
 _APPDATA  = os.environ.get('APPDATA', os.path.expanduser('~'))
 _DATA_DIR = os.path.join(_APPDATA, 'SMMM Takip')
-_CONFIG   = os.path.join(_DATA_DIR, 'config.ini')
 _CACHE    = os.path.join(_DATA_DIR, 'license_cache.json')
+
+# config.ini: EXE modunda kurulum klasöründe, geliştirici modunda AppData'da
+if getattr(_sys, 'frozen', False):
+    _CONFIG = os.path.join(os.path.dirname(_sys.executable), 'config.ini')
+else:
+    _CONFIG = os.path.join(_DATA_DIR, 'config.ini')
 _RAW_URL  = (
     f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/licenses.json"
     "?_={{}}"  # önbellek kırıcı
