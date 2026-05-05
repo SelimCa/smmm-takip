@@ -103,8 +103,8 @@ if errorlevel 1 (
     echo.
     echo  Repo zaten varsa mevcut remote'a push deneyin:
     git remote add origin https://github.com/%GH_USER%/%GH_REPO%.git 2>nul
-    git branch -M main
-    git push -u origin main
+    git branch -M master
+    git push -u origin master
     if errorlevel 1 goto :hata
 )
 

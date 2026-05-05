@@ -26,7 +26,7 @@ _DATA_DIR = os.path.join(_APPDATA, 'SMMM Takip')
 _CONFIG   = os.path.join(_DATA_DIR, 'config.ini')
 _CACHE    = os.path.join(_DATA_DIR, 'license_cache.json')
 _RAW_URL  = (
-    f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/licenses.json"
+    f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/licenses.json"
     "?_={{}}"  # önbellek kırıcı
 )
 
