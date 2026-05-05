@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Veritabanı dosyaları (kullanıcı verisi — repoya yükleme!)
+data/
+*.db
+*.db-shm
+*.db-wal
+smmm_data.db*
+
+# PyInstaller build çıktıları
+build/
+dist/
+
+# Kurulum EXE çıktısı
+installer_output/
+
+# Build araçları sanal ortamı
+build_tools/.venv/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Geçici dosyalar
+*.tmp
+*.bak
+Thumbs.db

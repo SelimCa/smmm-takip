@@ -1,0 +1,23 @@
+{
+  "_info": "SMMM Takip Lisans Kayıt Dosyası",
+  "_aciklama": "Bu dosyayı GitHub'da doğrudan düzenleyerek lisans ekleyip kaldırabilirsiniz.",
+  "_format": {
+    "kullanici_adi": {
+      "active": "true = aktif, false = devre dışı",
+      "expires": "Son kullanma tarihi YYYY-MM-DD formatında (null = süresiz)",
+      "name": "Görünen isim"
+    }
+  },
+  "licenses": {
+    "dogan198600": {
+      "active": true,
+      "expires": null,
+      "name": "Doğan"
+    },
+    "selim363636": {
+      "active": true,
+      "expires": null,
+      "name": "Selim"
+    }
+  }
+}
