@@ -39,13 +39,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo  Adım 1/5: GitHub'a giriş yapılıyor...
-echo  (Tarayıcı açılacak — GitHub hesabınızla giriş yapın)
-echo.
-gh auth login --web --git-protocol https
+echo  Adım 1/5: GitHub girişi kontrol ediliyor...
+gh auth status >nul 2>&1
 if errorlevel 1 (
-    echo  HATA: GitHub girişi başarısız!
-    goto :hata
+    echo  Giriş yapılmamış, token ile giriş yapılıyor...
+    gh auth login --git-protocol https
+    if errorlevel 1 (
+        echo  HATA: GitHub girişi başarısız!
+        goto :hata
+    )
+) else (
+    echo  ✓ GitHub girişi zaten mevcut
 )
 echo.
 

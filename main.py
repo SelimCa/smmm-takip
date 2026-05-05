@@ -1,14 +1,15 @@
 import sys
 import os
 
-from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
+from PyQt5.QtWidgets import (QApplication, QMessageBox, QSplashScreen,
+                              QInputDialog, QLineEdit)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap, QColor
 
 from db import db
 from main_window import MainWindow
 from update_checker import UpdateChecker, UpdateDialog
-from license import verify as _verify_license
+from license import verify as _verify_license, get_username, save_username
 
 
 def main():
@@ -20,6 +21,24 @@ def main():
     # Varsayılan font
     font = QFont("Segoe UI", 10)
     app.setFont(font)
+
+    # ── Kullanıcı adı yoksa sor ───────────────────────────────
+    if not get_username():
+        while True:
+            ad, ok = QInputDialog.getText(
+                None,
+                "Lisans Aktivasyonu",
+                "Yöneticiniz tarafından size tanımlanan\nkullanıcı adını girin:",
+                QLineEdit.Normal,
+                ""
+            )
+            if not ok:
+                sys.exit(0)
+            ad = ad.strip()
+            if ad:
+                save_username(ad)
+                break
+            QMessageBox.warning(None, "Uyarı", "Kullanıcı adı boş bırakılamaz.")
 
     # ── Lisans kontrolü (pencere açılmadan önce) ──────────────
     _splash = None

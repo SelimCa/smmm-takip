@@ -11,11 +11,11 @@ echo.
 :: Kök dizin (bu bat dosyasının bir üst klasörü)
 set "ROOT=%~dp0.."
 set "PYTHON=C:\Users\selim\.local\bin\python3.14.exe"
+set "PYINSTALLER=%~dp0.venv\Scripts\pyinstaller.exe"
+
 set "INNO_COMPILER=C:\Users\selim\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
 
 cd /d "%ROOT%"
-
-:: Sürümü version.py'den oku
 for /f "tokens=*" %%i in ('%PYTHON% -c "from version import APP_VERSION; print(APP_VERSION)"') do set APP_VERSION=%%i
 if "%APP_VERSION%"=="" set APP_VERSION=1.0.0
 echo Sürüm: %APP_VERSION%
@@ -41,7 +41,7 @@ echo.
 if exist "dist\SMMM_Takip" rmdir /s /q "dist\SMMM_Takip"
 if exist "build\SMMM_Takip" rmdir /s /q "build\SMMM_Takip"
 
-pyinstaller --noconfirm ^
+"%PYINSTALLER%" --noconfirm ^
     --distpath "%ROOT%\dist" ^
     --workpath "%ROOT%\build" ^
     --log-level WARN ^

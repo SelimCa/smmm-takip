@@ -92,6 +92,11 @@ var
 
 procedure InitializeWizard;
 begin
+  WizardForm.WelcomeLabel2.Caption :=
+    'Bu sihirbaz SMMM Takip Sistemini bilgisayarınıza kuracaktır.' + #13#10 + #13#10 +
+    'Devam etmeden önce tüm diğer uygulamaları kapatmanız önerilir.' + #13#10 + #13#10 +
+    'Devam etmek için İleri düğmesine tıklayın, kurulumu iptal etmek için Çıkış düğmesine tıklayın.';
+
   KullaniciAdiPage := CreateInputQueryPage(wpWelcome,
     'Lisans Aktivasyonu',
     'Kullanıcı adınızı girin',
@@ -129,14 +134,4 @@ begin
       'kullanici_adi=' + Username + #13#10,
       False);
   end;
-end;
-
-[Code]
-// Kurulum öncesi eski sürüm varsa uyar
-procedure InitializeWizard();
-begin
-  WizardForm.WelcomeLabel2.Caption :=
-    'Bu sihirbaz SMMM Takip Sistemini bilgisayarınıza kuracaktır.' + #13#10 + #13#10 +
-    'Devam etmeden önce tüm diğer uygulamaları kapatmanız önerilir.' + #13#10 + #13#10 +
-    'Devam etmek için İleri düğmesine tıklayın, kurulumu iptal etmek için Çıkış düğmesine tıklayın.';
 end;
