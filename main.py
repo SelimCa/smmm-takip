@@ -82,14 +82,14 @@ def main():
     window.show()
 
     # ── Açılışta arka planda güncelleme kontrolü ──
-    _checker = UpdateChecker()
+    window._update_checker = UpdateChecker()
 
     def _guncelleme_bulundu(surum, url, notlar):
         dlg = UpdateDialog(surum, url, notlar, parent=window)
         dlg.exec_()
 
-    _checker.update_available.connect(_guncelleme_bulundu)
-    _checker.check_in_background()
+    window._update_checker.update_available.connect(_guncelleme_bulundu)
+    window._update_checker.check_in_background()
 
     sys.exit(app.exec_())
 

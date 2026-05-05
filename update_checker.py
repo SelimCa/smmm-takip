@@ -207,14 +207,26 @@ class UpdateChecker(QObject):
 
     def check_in_background(self):
         """Arka planda GitHub API'yi kontrol eder. UI'ı bloklamaz."""
-        import threading
-        t = threading.Thread(target=self._check, daemon=True)
-        t.start()
+        self._thread = QThread()
+        self._worker = _CheckWorker()
+        self._worker.moveToThread(self._thread)
+        self._thread.started.connect(self._worker.run)
+        self._worker.result.connect(self._on_result)
+        self._worker.result.connect(self._thread.quit)
+        self._thread.start()
 
-    def _check(self):
+    def _on_result(self, surum: str, url: str, aciklama: str):
+        if surum:
+            self.update_available.emit(surum, url, aciklama)
+
+
+class _CheckWorker(QObject):
+    result = pyqtSignal(str, str, str)
+
+    def run(self):
         if not GITHUB_REPO or '/' not in GITHUB_REPO or 'GITHUB_KULLANICISI' in GITHUB_REPO:
-            return  # Henüz yapılandırılmamış
-
+            self.result.emit('', '', '')
+            return
         try:
             api_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
             req = urllib.request.Request(
@@ -226,13 +238,13 @@ class UpdateChecker(QObject):
 
             latest = data.get('tag_name', '').lstrip('v')
             if not latest:
+                self.result.emit('', '', '')
                 return
 
-            # Sürüm karşılaştır
             if _ver_tuple(latest) <= _ver_tuple(APP_VERSION):
-                return  # Güncel, güncelleme yok
+                self.result.emit('', '', '')
+                return
 
-            # .exe asset'ini bul
             download_url = ''
             for asset in data.get('assets', []):
                 if asset.get('name', '').lower().endswith('.exe'):
@@ -240,12 +252,11 @@ class UpdateChecker(QObject):
                     break
 
             if not download_url:
-                return  # Asset bulunamadı
+                self.result.emit('', '', '')
+                return
 
             aciklama = data.get('body', '') or ''
-            self.update_available.emit(latest, download_url, aciklama)
+            self.result.emit(latest, download_url, aciklama)
 
-        except urllib.error.URLError:
-            pass  # İnternet yok — sessizce geç
         except Exception:
-            pass  # Beklenmedik hata — sessizce geç
+            self.result.emit('', '', '')
