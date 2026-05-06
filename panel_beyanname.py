@@ -245,9 +245,10 @@ class BeyannamePanel(QWidget):
         lbl_ay = QLabel("Ay:")
         lbl_ay.setStyleSheet("font-weight: bold;")
         self.cmb_ay = QComboBox()
+        self.cmb_ay.addItem("Tüm Aylar", 0)
         for i, ay in enumerate(AYLAR[1:], 1):
             self.cmb_ay.addItem(ay, i)
-        self.cmb_ay.setCurrentIndex(date.today().month - 1)
+        self.cmb_ay.setCurrentIndex(date.today().month)
         self.cmb_ay.setFixedWidth(110)
 
         btn_yukle = QPushButton("🔄  Dönemi Yükle")
@@ -540,7 +541,19 @@ class BeyannamePanel(QWidget):
     def _load(self):
         yil = self.spn_yil.value()
         ay  = self.cmb_ay.currentData()
-        self._data = db.get_ay_beyannameleri(yil, ay)
+        if ay == 0:
+            tum = []
+            seen = set()
+            for month in range(1, 13):
+                for row in db.get_ay_beyannameleri(yil, month):
+                    key = (row['mukellef_id'], row['tur'], row['yil'], row['donem'])
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    tum.append(row)
+            self._data = tum
+        else:
+            self._data = db.get_ay_beyannameleri(yil, ay)
 
         # Mükellef filtre combo'sunu doldur
         self.cmb_filter.blockSignals(True)
