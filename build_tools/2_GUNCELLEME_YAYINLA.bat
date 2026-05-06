@@ -117,7 +117,7 @@ if errorlevel 1 (
 
 git add -A
 git diff --staged --quiet
-if errorlevel 1 (
+if not errorlevel 1 (
     echo       ✓ Commit edilecek değişiklik yok
     goto :tag_olustur
 )
