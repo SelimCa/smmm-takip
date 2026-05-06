@@ -3,7 +3,7 @@
 #  Bu dosyayı her yeni sürümde güncelleyin.
 # ─────────────────────────────────────────────────────────────
 
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.5"
 
 # GitHub kullanıcı adı / repo adı  (örnek: "selimcan/smmm-takip")
 # Bunu GitHub'da repo oluşturduktan sonra değiştirin!

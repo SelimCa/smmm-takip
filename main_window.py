@@ -13,6 +13,7 @@ from panel_mukellef import MukellefPanel
 from panel_beyanname import BeyannamePanel
 from panel_cari import CariPanel
 from panel_ayarlar import AyarlarPanel
+from version import APP_VERSION
 
 
 class MainWindow(QMainWindow):
@@ -193,7 +194,7 @@ class MainWindow(QMainWindow):
         sep2.setStyleSheet("background-color: #253447; max-height: 1px;")
         lay.addWidget(sep2)
 
-        ver = QLabel("v1.0.0")
+        ver = QLabel(f"v{APP_VERSION}")
         ver.setObjectName("ver_label")
         ver.setStyleSheet("color: #37474F; font-size: 11px; "
                           "qproperty-alignment: AlignCenter; padding: 8px; "

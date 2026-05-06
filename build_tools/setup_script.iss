@@ -90,6 +90,16 @@ Type: filesandordirs; Name: "{app}\__pycache__"
 var
   KullaniciAdiPage: TInputQueryWizardPage;
 
+function ConfigFilePath: string;
+begin
+  Result := ExpandConstant('{app}\config.ini');
+end;
+
+function ExistingUsername: string;
+begin
+  Result := GetIniString('Uygulama', 'kullanici_adi', '', ConfigFilePath);
+end;
+
 procedure InitializeWizard;
 begin
   WizardForm.WelcomeLabel2.Caption :=
@@ -108,6 +118,9 @@ end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
+  if WizardSilent then
+    Exit;
+
   if CurPageID = KullaniciAdiPage.ID then
   begin
     if Trim(KullaniciAdiPage.Values[0]) = '' then
@@ -120,13 +133,18 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  ConfigDir, ConfigFile, Username: string;
+  ConfigFile, Username: string;
 begin
   if CurStep = ssPostInstall then
   begin
     Username  := Trim(KullaniciAdiPage.Values[0]);
-    ConfigDir := ExpandConstant('{app}');
-    ConfigFile := ConfigDir + '\config.ini';
+    if Username = '' then
+      Username := Trim(ExistingUsername);
+
+    if Username = '' then
+      Exit;
+
+    ConfigFile := ConfigFilePath;
     SaveStringToFile(ConfigFile,
       '[Uygulama]' + #13#10 +
       'kullanici_adi=' + Username + #13#10,

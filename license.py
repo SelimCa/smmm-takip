@@ -16,6 +16,7 @@ import json
 import threading
 import configparser
 import urllib.request
+import urllib.error
 from datetime import date
 
 from version import GITHUB_REPO
@@ -25,12 +26,15 @@ import sys as _sys
 _APPDATA  = os.environ.get('APPDATA', os.path.expanduser('~'))
 _DATA_DIR = os.path.join(_APPDATA, 'SMMM Takip')
 _CACHE    = os.path.join(_DATA_DIR, 'license_cache.json')
+_CONFIG_APPDATA = os.path.join(_DATA_DIR, 'config.ini')
 
 # config.ini: EXE modunda kurulum klasöründe, geliştirici modunda AppData'da
 if getattr(_sys, 'frozen', False):
     _CONFIG = os.path.join(os.path.dirname(_sys.executable), 'config.ini')
+    _CONFIG_CANDIDATES = [_CONFIG, _CONFIG_APPDATA]
 else:
-    _CONFIG = os.path.join(_DATA_DIR, 'config.ini')
+    _CONFIG = _CONFIG_APPDATA
+    _CONFIG_CANDIDATES = [_CONFIG]
 _RAW_URL  = (
     f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/licenses.json"
     "?_={{}}"  # önbellek kırıcı
@@ -41,16 +45,20 @@ _RAW_URL  = (
 
 def get_username() -> str:
     cfg = configparser.ConfigParser()
-    try:
-        cfg.read(_CONFIG, encoding='utf-8')
-        return cfg.get('Uygulama', 'kullanici_adi', fallback='').strip()
-    except Exception:
-        return ''
+    for path in _CONFIG_CANDIDATES:
+        try:
+            cfg.read(path, encoding='utf-8')
+            username = cfg.get('Uygulama', 'kullanici_adi', fallback='').strip()
+            if username:
+                return username
+        except Exception:
+            continue
+    return ''
 
 
 def save_username(username: str):
     os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_CONFIG, 'w', encoding='utf-8') as f:
+    with open(_CONFIG_APPDATA, 'w', encoding='utf-8') as f:
         f.write(f"[Uygulama]\nkullanici_adi={username}\n")
 
 

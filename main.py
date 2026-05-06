@@ -22,8 +22,8 @@ def main():
     font = QFont("Segoe UI", 10)
     app.setFont(font)
 
-    # ── Kullanıcı adı yoksa sor ───────────────────────────────
-    if not get_username():
+    # ── Geliştirici modunda kullanıcı adı yoksa sor ───────────
+    if not getattr(sys, 'frozen', False) and not get_username():
         while True:
             ad, ok = QInputDialog.getText(
                 None,

@@ -13,6 +13,7 @@ import tempfile
 import subprocess
 import urllib.request
 import urllib.error
+import re
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, Qt
 from PyQt5.QtWidgets import (
@@ -33,6 +34,18 @@ def _ver_tuple(v: str):
         return tuple(int(x) for x in v.lstrip('v').split('.'))
     except Exception:
         return (0,)
+
+
+def _clean_release_notes(text: str) -> str:
+    if not text:
+        return ''
+    text = re.sub(r'https?://\S+', '', text)
+    text = text.replace('**', '').replace('__', '').replace('`', '')
+    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    lines = [line.strip(' -') for line in text.splitlines()]
+    lines = [line for line in lines if line]
+    return '\n'.join(lines).strip()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -102,6 +115,7 @@ class UpdateDialog(QDialog):
         lay.addWidget(lbl_baslik)
 
         # Değişiklik notları
+        aciklama = _clean_release_notes(aciklama)
         if aciklama and aciklama.strip():
             lbl_notlar_bslk = QLabel("<b>Değişiklikler:</b>")
             lay.addWidget(lbl_notlar_bslk)
