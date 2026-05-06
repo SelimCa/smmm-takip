@@ -13,6 +13,7 @@ Kullanıcı adı config  : %APPDATA%\\SMMM Takip\\config.ini
 
 import os
 import json
+import base64
 import threading
 import configparser
 import urllib.request
@@ -35,10 +36,16 @@ if getattr(_sys, 'frozen', False):
 else:
     _CONFIG = _CONFIG_APPDATA
     _CONFIG_CANDIDATES = [_CONFIG]
-_RAW_URL  = (
-    f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/licenses.json"
-    "?_={{}}"  # önbellek kırıcı
-)
+
+def _license_urls(cache_buster: int) -> list[str]:
+    return [
+        f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/licenses.json?_={cache_buster}",
+        f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/licenses.json?_={cache_buster}",
+        f"https://cdn.jsdelivr.net/gh/{GITHUB_REPO}@master/licenses.json?_={cache_buster}",
+        f"https://cdn.jsdelivr.net/gh/{GITHUB_REPO}@main/licenses.json?_={cache_buster}",
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/licenses.json?ref=master",
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/licenses.json?ref=main",
+    ]
 
 
 # ─── Kullanıcı adı ────────────────────────────────────────────
@@ -84,23 +91,40 @@ def _write_cache(data: dict):
 # ─── GitHub'dan çek ───────────────────────────────────────────
 
 def _fetch(timeout: int = 4) -> dict | None:
-    """GitHub raw URL'den licenses.json indir. None → başarısız."""
+    """GitHub'dan licenses.json indir. None → başarısız."""
     if not GITHUB_REPO or 'GITHUB_KULLANICISI' in GITHUB_REPO:
         return None
-    try:
-        import time
-        url = _RAW_URL.format(int(time.time()))
-        req = urllib.request.Request(
-            url,
-            headers={
-                'User-Agent': 'SMMM-Takip-License',
-                'Cache-Control': 'no-cache',
-            }
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read().decode('utf-8'))
-    except Exception:
-        return None
+
+    import time
+    cache_buster = int(time.time())
+
+    for url in _license_urls(cache_buster):
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    'User-Agent': 'SMMM-Takip-License',
+                    'Cache-Control': 'no-cache',
+                    'Accept': 'application/vnd.github.v3+json',
+                }
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                payload = r.read().decode('utf-8-sig')
+
+            # GitHub contents API formatı: {"content":"...base64...","encoding":"base64"}
+            if 'api.github.com/repos/' in url:
+                data = json.loads(payload)
+                content_b64 = data.get('content', '')
+                if not content_b64:
+                    continue
+                decoded = base64.b64decode(content_b64).decode('utf-8-sig')
+                return json.loads(decoded)
+
+            return json.loads(payload)
+        except Exception:
+            continue
+
+    return None
 
 
 # ─── Lisans değerlendirme ─────────────────────────────────────

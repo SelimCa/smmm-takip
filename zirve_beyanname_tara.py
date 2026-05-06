@@ -13,6 +13,7 @@ Dosya adı formatı:
 
 import os
 import re
+import unicodedata
 
 from db import db
 
@@ -40,6 +41,58 @@ YILLIK_TURLER = {'KURUMLAR VERGİSİ', 'GELİR VERGİSİ'}
 VERGI_NO_RE = re.compile(r'\b(\d{10,11})\b')
 
 
+def _norm_text(value: str) -> str:
+    """Türkçe/özel karakterleri sadeleştirip karşılaştırma için normalize eder."""
+    v = unicodedata.normalize('NFKD', value or '')
+    v = ''.join(ch for ch in v if not unicodedata.combining(ch))
+    return v.upper().replace(' ', '').replace('-', '')
+
+
+def _map_tur(tur_raw: str):
+    """Zirve dosya adındaki türü esnek şekilde bizim türe map eder."""
+    t = _norm_text(tur_raw)
+
+    # Önce doğrudan map dene
+    direct = ZİRVE_TUR_MAP.get(t)
+    if direct:
+        return direct
+
+    # Esnek eşleşmeler
+    if 'GECICI' in t:
+        return 'GECİCİ VERGİ'
+    if 'MUHSGK' in t:
+        return 'MUHSGK'
+    if 'MUHTASAR3' in t or ('MUHTASAR' in t and '3' in t):
+        return 'MUHTASAR 3 AYLIK'
+    if 'KURUMLAR' in t:
+        return 'KURUMLAR VERGİSİ'
+    if 'GELIR' in t:
+        return 'GELİR VERGİSİ'
+    if 'DAMGA' in t:
+        return 'DAMGA VERGİSİ'
+    if 'GVK67' in t:
+        return 'GVK 67'
+    if t.startswith('KDV1'):
+        return 'KDV1'
+    if t.startswith('KDV2'):
+        return 'KDV2'
+
+    return None
+
+
+def _uc_aylik_donem_from_month(ay: int):
+    """Ay numarasından 3 aylık dönem no döner (1..4)."""
+    if ay in (1, 2, 3):
+        return 1
+    if ay in (4, 5, 6):
+        return 2
+    if ay in (7, 8, 9):
+        return 3
+    if ay in (10, 11, 12):
+        return 4
+    return None
+
+
 def _parse_pdf_adi(dosya_adi):
     """
     Dosya adından (tur, yil, donem) çıkarır.
@@ -54,22 +107,24 @@ def _parse_pdf_adi(dosya_adi):
     if len(parts) < 5:
         return None
 
-    tur_zirve = parts[0].upper()
-    tur = ZİRVE_TUR_MAP.get(tur_zirve)
+    tur_zirve = parts[0]
+    tur = _map_tur(tur_zirve)
     if tur is None:
         return None
 
     try:
         bas_ay  = int(parts[1])
         bas_yil = int(parts[2])
+        son_ay  = int(parts[3])
+        son_yil = int(parts[4])
     except (ValueError, IndexError):
         return None
 
-    # Vergi no: 10 haneli sayıyı dosya adında ara
+    # Vergi no/TC no: 10 veya 11 haneli sayıyı dosya adında ara
     vergi_no = None
     for p in parts:
         m = VERGI_NO_RE.fullmatch(p.strip())
-        if m and len(m.group(1)) == 10:
+        if m:
             vergi_no = m.group(1)
             break
 
@@ -79,16 +134,16 @@ def _parse_pdf_adi(dosya_adi):
         donem = 1
         yil   = bas_yil
     elif tur == 'GECİCİ VERGİ':
-        # KGECICI_01_2024 -> Q1 = donem 1
-        donem = UC_AYLIK_DONEM.get(bas_ay)
+        # Başlangıç/bitiş ayı bazlı dönem tespiti (farklı dosya adlarına toleranslı)
+        donem = _uc_aylik_donem_from_month(bas_ay) or _uc_aylik_donem_from_month(son_ay)
         if donem is None:
             return None
-        yil = bas_yil
+        yil = son_yil if donem == 4 and son_ay in (1, 2) else bas_yil
     elif tur == 'MUHTASAR 3 AYLIK':
-        donem = UC_AYLIK_DONEM.get(bas_ay)
+        donem = _uc_aylik_donem_from_month(bas_ay) or _uc_aylik_donem_from_month(son_ay)
         if donem is None:
             return None
-        yil = bas_yil
+        yil = son_yil if donem == 4 and son_ay in (1, 2) else bas_yil
     else:
         # Aylık türler: dönem = ay numarası
         donem = bas_ay
