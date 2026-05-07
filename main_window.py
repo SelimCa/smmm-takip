@@ -13,6 +13,7 @@ from panel_mukellef import MukellefPanel
 from panel_beyanname import BeyannamePanel
 from panel_cari import CariPanel
 from panel_ayarlar import AyarlarPanel
+from panel_edefter import EDefterPanel
 from version import APP_VERSION
 
 
@@ -50,13 +51,15 @@ class MainWindow(QMainWindow):
         self.muk_panel   = MukellefPanel()
         self.beyan_panel = BeyannamePanel()
         self.cari_panel  = CariPanel()
+        self.edefter_panel = EDefterPanel()
         self.ayar_panel  = AyarlarPanel()
 
         self.stack.addWidget(self.dash_panel)   # 0
         self.stack.addWidget(self.muk_panel)    # 1
         self.stack.addWidget(self.beyan_panel)  # 2
         self.stack.addWidget(self.cari_panel)   # 3
-        self.stack.addWidget(self.ayar_panel)   # 4
+        self.stack.addWidget(self.edefter_panel) # 4
+        self.stack.addWidget(self.ayar_panel)   # 5
 
         # Durum çubuğu
         self.statusBar().showMessage("SMMM Takip Sistemi  |  Hazır")
@@ -130,7 +133,8 @@ class MainWindow(QMainWindow):
             ("👥   Mükellefler",    1),
             ("📋   Beyannameler",   2),
             ("💰   Cari Hesap",    3),
-            ("⚙️   Ayarlar",       4),
+            ("📄   E-Defter",       4),
+            ("⚙️   Ayarlar",       5),
         ]
 
         self.nav_btns = []
@@ -218,4 +222,6 @@ class MainWindow(QMainWindow):
         elif index == 3:
             self.cari_panel.refresh_clients()
         elif index == 4:
+            self.edefter_panel.refresh()
+        elif index == 5:
             self.ayar_panel.refresh()
