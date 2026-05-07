@@ -13,7 +13,13 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont
 
-from lxml import etree
+try:
+    from lxml import etree
+    LXML_AVAILABLE = True
+except Exception as _lxml_exc:
+    etree = None
+    LXML_AVAILABLE = False
+    LXML_IMPORT_ERROR = str(_lxml_exc)
 
 
 # ──────────────────────────────────────────────
@@ -62,6 +68,9 @@ def resolve_xslt_path(xml_path: Path) -> Path:
 
 def transform_xml_to_html(xml_path: str | Path, html_path: str | Path | None = None) -> Path:
     """XML dosyasını XSLT ile HTML'e dönüştür."""
+    if not LXML_AVAILABLE:
+        raise RuntimeError("lxml modülü bulunamadı. E-Defter önizleme için lxml gereklidir.")
+
     xml_file = Path(xml_path).expanduser().resolve()
     if not xml_file.exists():
         raise FileNotFoundError(f"XML dosyası bulunamadı: {xml_file}")
@@ -285,6 +294,11 @@ class EDefterPanel(QWidget):
         self.lbl_status.setStyleSheet("color: #607D8B; font-size: 10px; padding-top: 4px;")
         lay.addWidget(self.lbl_status)
 
+        if not LXML_AVAILABLE:
+            self.lbl_status.setText("lxml eksik: E-Defter işlemleri kullanılamaz")
+            self._write_log("❌ lxml modülü bulunamadı. Bu panel için lxml gerekli.")
+            self._write_log(f"❌ Hata detayı: {LXML_IMPORT_ERROR}")
+
         self._write_log("Uygulamaya hoş geldiniz. XML dosyası seçerek başlayabilirsiniz.")
 
     def _write_log(self, message: str):
@@ -293,6 +307,14 @@ class EDefterPanel(QWidget):
 
     def _choose_xml(self):
         """XML dosyası seç (tkinter filedialog kullanır)."""
+        if not LXML_AVAILABLE:
+            QMessageBox.critical(
+                self,
+                "Eksik Bağımlılık",
+                "lxml modülü bulunamadı. E-Defter kullanımı için güncel sürümü yeniden kurun."
+            )
+            return
+
         self._write_log("📂 Dosya seçme diyaloğu açılıyor...")
         
         # Gizli root window oluştur (tkinter dialog için gerekli)
@@ -341,6 +363,10 @@ class EDefterPanel(QWidget):
 
     def _preview_xml(self):
         """Önizlemeyi göster."""
+        if not LXML_AVAILABLE:
+            QMessageBox.critical(self, "Eksik Bağımlılık", "lxml modülü bulunamadı.")
+            return
+
         if not self.xml_path:
             QMessageBox.warning(self, "Uyarı", "Önce bir XML dosyası seçiniz.")
             return
@@ -374,6 +400,10 @@ class EDefterPanel(QWidget):
 
     def _export_html(self):
         """HTML dosyasını kaydet."""
+        if not LXML_AVAILABLE:
+            QMessageBox.critical(self, "Eksik Bağımlılık", "lxml modülü bulunamadı.")
+            return
+
         if not self.xml_path:
             QMessageBox.warning(self, "Uyarı", "Önce bir XML dosyası seçiniz.")
             return
@@ -433,6 +463,10 @@ class EDefterPanel(QWidget):
 
     def _export_pdf(self):
         """PDF dosyasını kaydet."""
+        if not LXML_AVAILABLE:
+            QMessageBox.critical(self, "Eksik Bağımlılık", "lxml modülü bulunamadı.")
+            return
+
         if not self.xml_path:
             QMessageBox.warning(self, "Uyarı", "Önce bir XML dosyası seçiniz.")
             return

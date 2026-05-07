@@ -12,6 +12,7 @@ echo.
 set "ROOT=%~dp0.."
 set "PYTHON=C:\Users\selim\.local\bin\python3.14.exe"
 set "PYINSTALLER=%~dp0.venv\Scripts\pyinstaller.exe"
+set "BUILD_PYTHON=%~dp0.venv\Scripts\python.exe"
 
 set "INNO_COMPILER=C:\Users\selim\AppData\Local\Programs\Inno Setup 6\ISCC.exe"
 
@@ -23,7 +24,7 @@ echo Sürüm: %APP_VERSION%
 cd /d "%ROOT%"
 
 :: ── ADIM 1: İkonu yenile ──
-echo [1/4] İkon oluşturuluyor...
+echo [1/5] İkon oluşturuluyor...
 "%PYTHON%" build_tools\create_icon.py
 if errorlevel 1 (
     echo HATA: İkon oluşturulamadı!
@@ -32,8 +33,60 @@ if errorlevel 1 (
 echo       ✓ İkon hazır
 echo.
 
-:: ── ADIM 2: PyInstaller ile exe paketi oluştur ──
-echo [2/4] PyInstaller ile uygulama paketleniyor...
+:: ── ADIM 2: Build .venv bağımlılıklarını güncelle ──
+echo [2/5] Build ortamı bağımlılıkları yükleniyor...
+if not exist "%BUILD_PYTHON%" (
+    echo UYARI: build_tools\.venv bulunamadi, yeniden olusturuluyor...
+    "%PYTHON%" -m venv "%~dp0.venv"
+    if errorlevel 1 (
+        echo HATA: build_tools\.venv olusturulamadi!
+        goto :hata
+    )
+)
+
+"%BUILD_PYTHON%" -m ensurepip --upgrade
+if errorlevel 1 (
+    echo UYARI: ensurepip adimi basarisiz oldu, pip kontrolu yapiliyor...
+)
+
+"%BUILD_PYTHON%" -m pip --version >nul 2>&1
+if errorlevel 1 (
+    echo UYARI: pip bulunamadi, build ortamı sifirdan olusturuluyor...
+    if exist "%~dp0.venv" rmdir /s /q "%~dp0.venv"
+    "%PYTHON%" -m venv "%~dp0.venv"
+    if errorlevel 1 (
+        echo HATA: build_tools\.venv yeniden olusturulamadi!
+        goto :hata
+    )
+    "%BUILD_PYTHON%" -m ensurepip --upgrade
+)
+
+"%BUILD_PYTHON%" -m pip install --upgrade pip
+if errorlevel 1 (
+    echo HATA: pip guncellenemedi!
+    goto :hata
+)
+
+"%BUILD_PYTHON%" -m pip install -r "%ROOT%\requirements.txt"
+if errorlevel 1 (
+    echo HATA: Build bagimliliklari yuklenemedi!
+    goto :hata
+)
+
+if not exist "%PYINSTALLER%" (
+    echo UYARI: PyInstaller build ortamında yok, yukleniyor...
+    "%BUILD_PYTHON%" -m pip install pyinstaller
+    if errorlevel 1 (
+        echo HATA: PyInstaller yuklenemedi!
+        goto :hata
+    )
+)
+
+echo       ✓ Build bağımlılıkları hazır
+echo.
+
+:: ── ADIM 3: PyInstaller ile exe paketi oluştur ──
+echo [3/5] PyInstaller ile uygulama paketleniyor...
 echo       (Bu adım birkaç dakika sürebilir...)
 echo.
 
@@ -61,8 +114,8 @@ echo. > "dist\SMMM_Takip\data\.gitkeep"
 echo       ✓ Paketleme tamamlandı
 echo.
 
-:: ── ADIM 3: Inno Setup ile kurulum EXE oluştur ──
-echo [3/4] Kurulum dosyası oluşturuluyor (Inno Setup)...
+:: ── ADIM 4: Inno Setup ile kurulum EXE oluştur ──
+echo [4/5] Kurulum dosyası oluşturuluyor (Inno Setup)...
 
 :: Çıktı klasörü
 if not exist "%ROOT%\installer_output" mkdir "%ROOT%\installer_output"
@@ -93,8 +146,8 @@ if errorlevel 1 (
 echo       ✓ Kurulum EXE hazır
 echo.
 
-:: ── ADIM 4: Sonuç ──
-echo [4/4] Tamamlandı!
+:: ── ADIM 5: Sonuç ──
+echo [5/5] Tamamlandı!
 echo.
 echo  ╔══════════════════════════════════════════════════════╗
 echo  ║  ✅  Kurulum dosyası oluşturuldu!                    ║
