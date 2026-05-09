@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont
+from edefter_excel import export_yevmiye_to_excel, inspect_yevmiye_input
 
 try:
     from lxml import etree
@@ -167,6 +168,26 @@ class EDefterWorker(QThread):
             self.error.emit(str(exc))
 
 
+class YevmiyeExcelWorker(QThread):
+    """PDF/XML/HTML -> Excel dönüşüm işçisi."""
+    progress = pyqtSignal(str)
+    finished = pyqtSignal(object)
+    error = pyqtSignal(str)
+
+    def __init__(self, input_path: Path, output_path: Path):
+        super().__init__()
+        self.input_path = input_path
+        self.output_path = output_path
+
+    def run(self):
+        try:
+            self.progress.emit("Excel aktarımı hazırlanıyor...")
+            result = export_yevmiye_to_excel(self.input_path, self.output_path, transform_xml_to_html)
+            self.finished.emit(result)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
 # ──────────────────────────────────────────────
 # E-Defter Panel
 # ──────────────────────────────────────────────
@@ -177,7 +198,9 @@ class EDefterPanel(QWidget):
         self.xml_path: Path | None = None
         self.xslt_path: Path | None = None
         self.html_path: Path | None = None
+        self.excel_input_path: Path | None = None
         self.worker: EDefterWorker | None = None
+        self.excel_worker: YevmiyeExcelWorker | None = None
         self.last_xml_dir = Path.home()  # Son açılan XML klasörü
         self.last_save_dir = Path.home()  # Son kaydetme klasörü
         self._build()
@@ -194,7 +217,7 @@ class EDefterPanel(QWidget):
         lay.addWidget(title)
 
         subtitle = QLabel(
-            "E-defter XML dosyalarını HTML veya PDF olarak görüntüleyin"
+            "E-defter dosyalarını görüntüleyin, PDF/XML yevmiye kayıtlarını Excel'e aktarın"
         )
         subtitle.setStyleSheet("color: #607D8B; font-size: 11px;")
         lay.addWidget(subtitle)
@@ -247,6 +270,41 @@ class EDefterPanel(QWidget):
         lay_ops.addWidget(self.btn_open)
         lay.addWidget(grp_ops)
 
+        grp_excel = QGroupBox("Zirve Yevmiye Excel Aktarım")
+        grp_excel.setStyleSheet("QGroupBox { border: 1px solid #BDD7EE; border-radius: 4px; padding-top: 8px; }")
+        lay_excel = QFormLayout(grp_excel)
+
+        excel_info = QLabel(
+            "PDF raporu, XML veya HTML seçebilirsiniz. PDF seçilirse yevmiye kaynağı otomatik bulunur."
+        )
+        excel_info.setWordWrap(True)
+        excel_info.setStyleSheet("color: #607D8B; font-size: 11px;")
+        lay_excel.addRow(excel_info)
+
+        self.lbl_excel_input = QLineEdit()
+        self.lbl_excel_input.setReadOnly(True)
+        self.lbl_excel_input.setPlaceholderText("PDF, XML veya HTML dosyası seçilmedi")
+        lay_excel.addRow("Kaynak Dosya:", self.lbl_excel_input)
+
+        self.lbl_excel_source = QLineEdit()
+        self.lbl_excel_source.setReadOnly(True)
+        self.lbl_excel_source.setPlaceholderText("-")
+        lay_excel.addRow("Çözülen Yevmiye:", self.lbl_excel_source)
+
+        excel_buttons = QHBoxLayout()
+        self.btn_choose_excel = QPushButton("PDF/XML/HTML Seç")
+        self.btn_choose_excel.clicked.connect(self._choose_excel_input)
+
+        self.btn_export_excel = QPushButton("Excel Kaydet")
+        self.btn_export_excel.clicked.connect(self._export_excel_from_yevmiye)
+        self.btn_export_excel.setEnabled(False)
+
+        excel_buttons.addWidget(self.btn_choose_excel)
+        excel_buttons.addWidget(self.btn_export_excel)
+        lay_excel.addRow("", excel_buttons)
+
+        lay.addWidget(grp_excel)
+
         # Sekmeler: Log ve Bilgi
         self.notebook = QTabWidget()
         
@@ -275,6 +333,12 @@ class EDefterPanel(QWidget):
 3. **HTML Kaydet**: HTML çıktısını diskte kaydetmek için tıklayın
 4. **PDF Kaydet**: Edge aracılığıyla PDF olarak dışa aktarın
 5. **Tarayıcıda Aç**: HTML'i varsayılan tarayıcıda açın
+
+### Zirve Yevmiye Excel Aktarımı
+
+1. **PDF/XML/HTML Seç**: Zirve raporu PDF'si, yevmiye XML'i veya HTML çıktısını seçin
+2. **Excel Kaydet**: Yevmiye fişlerini tek adımda Excel dosyasına aktarın
+3. PDF seçildiğinde sistem rapor içinden veya aynı klasörden uygun yevmiye kaynağını otomatik bulur
 
 **Desteklenen E-Defter Türleri:**
 - Yevmiye Defteri (-Y-)
@@ -356,6 +420,54 @@ class EDefterPanel(QWidget):
                 self.btn_pdf.setEnabled(False)
                 QMessageBox.critical(self, "XSLT Hatası", str(exc))
                 self._write_log(f"❌ Hata: {exc}")
+        except Exception as exc:
+            root.destroy()
+            self._write_log(f"❌ Dialog hatası: {exc}")
+            QMessageBox.critical(self, "Dosya Seçme Hatası", str(exc))
+
+    def _choose_excel_input(self):
+        """Excel aktarımı için PDF/XML/HTML dosyası seç."""
+        self._write_log("📂 Excel aktarımı için kaynak dosya seçiliyor...")
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+
+        try:
+            file_path = tk_filedialog.askopenfilename(
+                title="Yevmiye Kaynağı Seç",
+                initialdir=str(self.last_xml_dir),
+                filetypes=[
+                    ("Desteklenen Dosyalar", "*.pdf *.xml *.html"),
+                    ("PDF Dosyaları", "*.pdf"),
+                    ("XML Dosyaları", "*.xml"),
+                    ("HTML Dosyaları", "*.html"),
+                    ("Tüm Dosyalar", "*.*"),
+                ]
+            )
+
+            root.destroy()
+
+            if not file_path:
+                self._write_log("❌ Excel aktarım kaynağı seçimi iptal edildi")
+                return
+
+            self.excel_input_path = Path(file_path)
+            self.last_xml_dir = self.excel_input_path.parent
+            self.lbl_excel_input.setText(str(self.excel_input_path))
+
+            try:
+                info = inspect_yevmiye_input(self.excel_input_path)
+                resolved_source = info.get("resolved_source")
+                self.lbl_excel_source.setText(str(resolved_source) if resolved_source else "-")
+                self.btn_export_excel.setEnabled(True)
+                self._write_log(f"✅ Excel kaynağı seçildi: {self.excel_input_path.name}")
+                self._write_log(f"✅ {info.get('message')}")
+            except Exception as exc:
+                self.lbl_excel_source.setText("-")
+                self.btn_export_excel.setEnabled(False)
+                self._write_log(f"❌ Excel kaynak çözümleme hatası: {exc}")
+                QMessageBox.warning(self, "Kaynak Bulunamadı", str(exc))
         except Exception as exc:
             root.destroy()
             self._write_log(f"❌ Dialog hatası: {exc}")
@@ -521,6 +633,74 @@ class EDefterPanel(QWidget):
         else:
             QMessageBox.warning(self, "Uyarı", "Önce bir HTML önizlemesi oluşturun.")
 
+    def _export_excel_from_yevmiye(self):
+        """PDF/XML/HTML kaynağından Excel üret."""
+        if not self.excel_input_path:
+            QMessageBox.warning(self, "Uyarı", "Önce bir PDF, XML veya HTML dosyası seçiniz.")
+            return
+
+        try:
+            info = inspect_yevmiye_input(self.excel_input_path)
+        except Exception as exc:
+            QMessageBox.critical(self, "Kaynak Hatası", str(exc))
+            self._write_log(f"❌ Excel aktarımı başlamadı: {exc}")
+            return
+
+        resolved_source = info.get("resolved_source")
+        default_stem = self.excel_input_path.stem
+        if isinstance(resolved_source, Path):
+            default_stem = resolved_source.stem
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+
+        save_path = tk_filedialog.asksaveasfilename(
+            title="Excel Kaydet",
+            initialfile=f"{default_stem}.xlsx",
+            initialdir=str(self.last_save_dir),
+            filetypes=[("Excel Dosyaları", "*.xlsx"), ("Tüm Dosyalar", "*.*")]
+        )
+        root.destroy()
+
+        if not save_path:
+            self._write_log("❌ Excel kaydetme iptal edildi")
+            return
+
+        self.last_save_dir = Path(save_path).parent
+        self._disable_buttons()
+        self.lbl_status.setText("Excel aktarımı yapılıyor...")
+
+        self.excel_worker = YevmiyeExcelWorker(self.excel_input_path, Path(save_path))
+        self.excel_worker.progress.connect(self._write_log)
+        self.excel_worker.finished.connect(self._on_excel_done)
+        self.excel_worker.error.connect(self._on_error)
+        self.excel_worker.start()
+
+    def _on_excel_done(self, result: object):
+        """Excel aktarımı tamamlandığında."""
+        if not isinstance(result, dict):
+            self._on_error("Excel aktarım sonucu okunamadı.")
+            return
+
+        output_path = Path(str(result["output_path"]))
+        resolved_source = result.get("resolved_source")
+        row_count = int(result.get("row_count", 0))
+
+        if resolved_source:
+            self.lbl_excel_source.setText(str(resolved_source))
+
+        self._write_log(f"✅ Excel kaydedildi: {output_path}")
+        self._write_log(f"✅ Aktarılan yevmiye satırı: {row_count}")
+        self.lbl_status.setText(f"Excel kaydedildi ({row_count} satır)")
+        self._enable_buttons()
+
+        QMessageBox.information(
+            self,
+            "Başarılı",
+            f"Excel kaydedildi:\n{output_path}\n\nAktarılan satır: {row_count}"
+        )
+
     def _on_error(self, error_msg: str):
         """Hata oluştuğunda."""
         self._write_log(f"❌ Hata: {error_msg}")
@@ -534,6 +714,8 @@ class EDefterPanel(QWidget):
         self.btn_html.setEnabled(False)
         self.btn_pdf.setEnabled(False)
         self.btn_open.setEnabled(False)
+        self.btn_choose_excel.setEnabled(False)
+        self.btn_export_excel.setEnabled(False)
 
     def _enable_buttons(self):
         """İşlem butonlarını etkinleştir."""
@@ -543,6 +725,9 @@ class EDefterPanel(QWidget):
             self.btn_pdf.setEnabled(True)
             if self.html_path:
                 self.btn_open.setEnabled(True)
+        self.btn_choose_excel.setEnabled(True)
+        if self.excel_input_path:
+            self.btn_export_excel.setEnabled(True)
 
     def refresh(self):
         """Panel yenilenme (sidebar'dan çağrılır)."""
